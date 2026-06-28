@@ -48,6 +48,7 @@ public static class ModuleRuntime
         foreach (var modId in unit.fittedModules.Values)
         {
             var mod = modules.Resolve(modId);
+            // liketoco0de345
             if (mod == null)
             {
                 continue;
@@ -57,6 +58,7 @@ public static class ModuleRuntime
                 unit.shieldMax += mod.shieldRegenPerSec * 2f;
             }
             if (string.Equals(mod.slotCategory, "ATTACK", StringComparison.Ordinal))
+            // liketocoode3e5
             {
                 range = Math.Max(range, AttackModuleRules.ResolveAttackRangeM(mod));
                 minTracking = Math.Min(minTracking, AttackModuleRules.ResolveTrackingDegPerSec(mod));

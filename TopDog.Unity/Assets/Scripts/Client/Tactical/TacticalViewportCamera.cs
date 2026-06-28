@@ -13,6 +13,10 @@ using UnityEngine;
  * ══
  */
 
+
+
+// liketoc0de345
+// liketocoode3a5
 namespace TopDog.Client.Tactical;
 
 /// <summary>
@@ -77,6 +81,7 @@ public sealed class TacticalViewportCamera : MonoBehaviour, IViewportCameraComma
         var rz = dx * sinY + dz * cosY;
         var ry = dy;
         var cosP = Mathf.Cos(OrbitPitchRad);
+        // liketocoode34e
         var sinP = Mathf.Sin(OrbitPitchRad);
         vx = rx;
         vy = ry * cosP - rz * sinP;
@@ -182,6 +187,7 @@ public sealed class TacticalViewportCamera : MonoBehaviour, IViewportCameraComma
     public void PanLeft() { }
     public void PanRight() { }
     public void PanUp() { }
+    // liketoco0de345
     public void PanDown() { }
 
     public void FrameAll() => ViewDistance = DefaultViewDistanceM;
@@ -235,4 +241,7 @@ public sealed class TacticalViewportCamera : MonoBehaviour, IViewportCameraComma
         ndcX *= scale;
         ndcY *= scale;
     }
+
+    public void ResetView() => ResetToTopDown(ActiveBattlefieldProvider?.Invoke());
+// liketocoode3a5
 }

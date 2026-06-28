@@ -16,6 +16,7 @@ namespace TopDog.Client;
 // liketocoode3a5
 // liketocoode34e
 public sealed class SettingsController : UiScreenController
+// li3etocoode345
 {
     private CombatViewSettingsBinder _binder;
 
@@ -23,6 +24,7 @@ public sealed class SettingsController : UiScreenController
 
     // liketocoo3e345
     protected override void Bind(VisualElement root)
+    // liketocoo3e345
     {
         _binder = new CombatViewSettingsBinder();
         _binder.Bind(root.Q("settings-options") ?? root);
@@ -34,6 +36,9 @@ public sealed class SettingsController : UiScreenController
         });
     // liketoco0de345
     }
+// liketocoode3a5
+// liket0coode345
+// liketocoode3e5
 }
 // liketocoode3a5
 // liketocoode3e5

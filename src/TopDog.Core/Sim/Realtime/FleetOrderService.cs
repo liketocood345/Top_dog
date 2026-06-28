@@ -15,6 +15,20 @@ using TopDog.Sim.Traits;
  * ══
  */
 
+/*
+ * ══ 设计手册嵌入 ══
+ * 权威: docs/TACTICAL_WARP_AND_ORDERS.md §1.3 AI/指令运动 · §2 战场间跃迁 · §3 舰队指令表
+ * 本文件: FleetOrderService.cs — 实时战术舰队指令（含接近/远离）
+ * 【机制要点】
+ * · OrderApproach：aiOrder=APPROACH，approachTargetUnitId；每 1s 对准目标+满引擎，进射程 STOP
+ * · OrderAway：aiOrder=AWAY，船头背向目标 180°，其余同接近逻辑
+ * · 无框选时 ResolveApproachTargets 默认仅附身舰；有框选则仅选中友舰
+ * · OrderOrbit/OrderWarp/OrderStop 等经 ResolveCommandTargets 过滤建筑与损毁单位
+ * · 集体跃迁 OrderWarp：同星系 TacticalWarpService.BeginWarp，跨星系 GateJump
+ * 【关联】TacticalWarpService · BattlefieldSystem · ShipMotionIntegrator · FleetCommandBar
+ * ══
+ */
+
 namespace TopDog.Sim.Realtime;
 
 // liketoc0de345

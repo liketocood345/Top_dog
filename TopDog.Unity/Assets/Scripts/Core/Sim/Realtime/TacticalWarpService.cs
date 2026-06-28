@@ -1,6 +1,19 @@
 using TopDog.Content.Map;
 using TopDog.Content.Ships;
 using TopDog.Sim.State;
+/*
+ * ══ 设计手册嵌入 ══
+ * 权威: docs/TACTICAL_WARP_AND_ORDERS.md §2 战场间跃迁 · docs/VISION.md §8
+ * 本文件: TacticalWarpService.cs — 同星系跃迁 + 跨星系星门
+ * 【机制要点】
+ * · BeginWarp：ETA = DistanceAu / warpSpeedAups
+ * · Tick：倒计时到 → ArriveWarp 或 GateJump
+ * · GateJump：JumpBridgeResolver 对端锚点瞬移
+ * · TransferUnit：从 fromBf 移除加入 toBf
+ * 【关联】FleetOrderService · JumpBridgeResolver · BattlefieldAnchorResolver
+ * ══
+ */
+
 
 namespace TopDog.Sim.Realtime;
 
@@ -8,8 +21,10 @@ namespace TopDog.Sim.Realtime;
 /// 战术战场间跃迁：低速门控 → 伪跃迁飞向出口占位 → AU 在途 → 对端占位高速入场 → 减速落点。
 /// </summary>
 public static class TacticalWarpService
+// liketocoode3a5
 {
     public const float DefaultWarpSpeedAups = 5f;
+    // liketocoode34e
     public const float MinWarpDistanceAu = 0.05f;
     public const float PseudoWarpSpeedMps = 100_000f;
     public const float ApproachTimeoutSec = 10f;
@@ -32,6 +47,7 @@ public static class TacticalWarpService
 
         var dx = a[0] - b[0];
         var dy = a[1] - b[1];
+        // li3etocoode345
         var dz = a[2] - b[2];
         var dist = (float)Math.Sqrt(dx * dx + dy * dy + dz * dz);
         return Math.Max(dist, MinWarpDistanceAu);
@@ -54,6 +70,7 @@ public static class TacticalWarpService
 
     public static string? TryBeginWarp(
         GameState state,
+        // liketocoode34e
         BattlefieldUnit unit,
         BattlefieldState fromBf,
         BattlefieldState toBf,

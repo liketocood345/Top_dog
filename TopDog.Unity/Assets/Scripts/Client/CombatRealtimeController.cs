@@ -268,8 +268,7 @@ public sealed class CombatRealtimeController : UiScreenController
         }
         if (_fleetCommandBar != null)
         {
-            _fleetCommandBar.SetEnabled(!starMap);
-            _fleetCommandBar.style.opacity = starMap ? 0.45f : 1f;
+            _fleetCommandBar.style.opacity = starMap ? 0.85f : 1f;
         }
         if (_viewToggleBtn != null)
         {

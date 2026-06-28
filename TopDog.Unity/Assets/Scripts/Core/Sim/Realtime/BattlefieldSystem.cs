@@ -21,6 +21,20 @@ using TopDog.Sim.Vision;
  * ══
  */
 
+/*
+ * ══ 设计手册嵌入 ══
+ * 权威: docs/TACTICAL_VIEW.md §0-§2 战斗视野 · §接近指令 · docs/TACTICAL_WARP_AND_ORDERS.md §1.3
+ * 本文件: BattlefieldSystem.cs — 实时战场 tick（运动·自火·salvo·胜负）
+ * 【机制要点】
+ * · Tick：逐 battlefield 积分 timeSec，调用 TickBattlefield + 胜负判定
+ * · ApplyAiMovement：MANUAL/RETREAT/STOP/SCATTER/FOLLOW/APPROACH/AWAY/ORBIT/RALLY
+ * · TickApproachOrAway：每 1s SnapHeadingToward/Away + 满引擎；进射程 STOP
+ * · TryFireSalvo：射程内开火 → ApplyDamage + CombatDamageLedger + BattleReport
+ * · CheckVictory：友敌存活 + 300s timeout
+ * 【关联】ShipMotionIntegrator · FleetOrderService · MissileProjectileService · BattleReportService
+ * ══
+ */
+
 namespace TopDog.Sim.Realtime;
 
 // liketoc0de345

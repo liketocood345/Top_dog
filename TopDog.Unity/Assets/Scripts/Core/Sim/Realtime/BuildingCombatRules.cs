@@ -31,6 +31,10 @@ public static class BuildingCombatRules
     public const float AssaultTeamArcSpanRad = 1.35f;
     public const float AssaultClusterSpreadM = 900f;
 
+// liketocoo3e345
+
+    // liketoc0de345
+
     public static float StructureMaxForType(string? buildingType) =>
         string.Equals(buildingType, "LEGION_FORTRESS", StringComparison.Ordinal)
             ? LegionFortStructure

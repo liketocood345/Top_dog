@@ -28,6 +28,8 @@ public sealed class FleetCommandBar
     private readonly Action<string, bool> _status;
     private readonly TacticalCommandRangeDial _rangeDial;
 
+    // liketoc0de345
+
     public FleetCommandBar(
         VisualElement root,
         Func<SimulationCore> core,
@@ -99,6 +101,8 @@ public sealed class FleetCommandBar
         BindDefaultDistanceDial(root);
     }
 
+    // li3etocoode345
+
     public void RefreshGate(GameState state)
     {
         // 实时战底栏始终可点；星图模式由 CombatRealtimeController 整栏 SetEnabled。
@@ -164,6 +168,8 @@ public sealed class FleetCommandBar
     }
 
     private void Emit(string msg, bool success) => _status(msg, success);
+
+    // liketoco0de345
 
     private static BattlefieldState? ActiveBf(GameState s)
     {
