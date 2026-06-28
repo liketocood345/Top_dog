@@ -1,3 +1,6 @@
+> ⚠️ **不要触动** — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）。  
+> 除非用户明确要求修改本背景功能，否则不要改动本目录资产、导入脚本及 CombatBackground* / CombatSpaceBackground* 链路。
+
 # 实时交战宇宙背景（第二银河天空盒）
 
 
@@ -59,6 +62,21 @@
 | （无对应） | RT 仍黑时用 `equirect.png` + yaw/pitch 平移作末级回退 |
 
 TopDog 因战斗 UI 为 UITK，额外增加 **RenderTexture → art-viewport-bg** 一步（SG 为全屏 3D 相机直出）。
+
+## SG 原版天空盒面序（对照 il2cpp + ConfigDataGEOtherResPathDataInfo）
+
+| 层级 | SG | TopDog |
+|------|-----|--------|
+| 配置 | `SkyBoxResID` → `*_Mat.mat`（材质）；`SkyBoxCubmapResID` → 打包 cubemap 引用 | 六面 PNG 运行时 `Cubemap.SetPixels` |
+| 面序 | 资产内按 Unity `CubemapFace`：**+X +Y +Z -X -Y -Z** → `PositiveX`…`NegativeZ` | `CombatBackgroundCatalog.FaceOrder` 同上 |
+| 命名 A | `U_Skybox_01±X/Y/Z.png`、`SpaceBoxPRO_*` | 文件名后缀 `±X/±Y/±Z` |
+| 命名 B | `ProjectXSkyBox_{Right,UP,Front,Left,Down,Back}` | 关键字回退：Right→+X，UP→+Y，Front→+Z… |
+| **Unity 拼接修正** | 见 `CombatBackgroundCatalog.SetFaceSourceRemap` | U/O/R/S：+Y↔-Y；N/Perel（SpaceBoxPRO）：+X↔-X 且 +Y↔-Y |
+| 边缝校验脚本 | `scripts/analyze_cubemap_faces.py` | 读取六面 PNG 边条 RMS，穷举 N 套排列 |
+| 命名 C | `Nebula_*_{Left+X,Up+Y,Front+Z,…}` | 后缀 `±X` 嵌入文件名 |
+| 渲染 | `SolarSystemCelestialLayerController.SetSkyBoxMaterial` + Y/X orbit 相机 | 内翻球 `TopDog/CombatSkyboxInterior`（与 SG 立方体采样一致） |
+
+**注意**：磁盘上「六面文件列表顺序」≠ Unity `CubemapFace` 枚举下标（枚举为 +X,-X,+Y,-Y,+Z,-Z）。TopDog 按面名映射，不按数组下标。
 
 ## 重新生成
 

@@ -1,3 +1,8 @@
+/*
+ * ⚠️ 不要触动 — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）
+ * 除非用户明确要求修改本背景功能，否则不要改动本文件及 CombatBackground* / CombatSpaceBackground* 链路。
+ * 当前面序/贴图映射已验收（U/O/R/S +Y↔-Y；N +X↔-X +Y↔-Y），勿为无关需求重写。
+ */
 using System;
 
 using System.Collections.Generic;
@@ -30,7 +35,24 @@ public static class CombatBackgroundCatalog
 
 
 
+    /// <summary>
+    /// SG / Unity cubemap face assignment (NOT the order of filenames on disk).
+    /// Config: SkyBoxCubmapResID → bundled cubemap; runtime material uses <c>_SkyboxCubeMap</c>.
+    /// Extracted PNGs use either <c>±X/±Y/±Z</c> suffix (SpaceBoxPRO, U_Skybox) or directional names (ProjectX).
+    /// Unity <see cref="CubemapFace"/> enum: +X, +Y, +Z, -X, -Y, -Z → PositiveX..NegativeZ.
+    /// </summary>
     private static readonly string[] FaceSuffixes = { "+X", "+Y", "+Z", "-X", "-Y", "-Z" };
+
+    /// <summary>Fallback keywords when a face PNG has no ±-axis suffix (e.g. ProjectXSkyBox_Right).</summary>
+    private static readonly string[][] FaceKeywordFallbacks =
+    {
+        new[] { "RIGHT" },
+        new[] { "UP" },
+        new[] { "FRONT" },
+        new[] { "LEFT" },
+        new[] { "DOWN" },
+        new[] { "BACK" },
+    };
 
     private static readonly CubemapFace[] FaceOrder =
 
@@ -47,6 +69,35 @@ public static class CombatBackgroundCatalog
         CubemapFace.NegativeY,
 
         CubemapFace.NegativeZ,
+
+    };
+
+    /// <summary>Unity cubemap slot → source PNG index (+X,+Y,+Z,-X,-Y,-Z). Identity = 0..5.</summary>
+    private static readonly int[] IdentityFaceSources = { 0, 1, 2, 3, 4, 5 };
+
+    /// <summary>U/O/R/S：SG 导出 +Y/-Y 与 Unity 采样上下对调（边缝分析 + 目视）。</summary>
+    private static readonly int[] SwapUyFaceSources = { 0, 4, 2, 3, 1, 5 };
+
+    /// <summary>SpaceBoxPRO：+X/-X 与 +Y/-Y 源文件均需对调（边缝 +X 最优，上下需 +Y 对调）。</summary>
+    private static readonly int[] SwapUxUyFaceSources = { 3, 4, 2, 0, 1, 5 };
+
+    private const int CubemapLayoutVersion = 2;
+
+    private static readonly Dictionary<string, int[]> SetFaceSourceRemap = new(StringComparer.Ordinal)
+
+    {
+
+        ["U_Skybox_01"] = SwapUyFaceSources,
+
+        ["O_Skybox_01"] = SwapUyFaceSources,
+
+        ["R_Skybox_01"] = SwapUyFaceSources,
+
+        ["S_Skybox_01"] = SwapUyFaceSources,
+
+        ["N_Skybox_Arothe01"] = SwapUxUyFaceSources,
+
+        ["Wormhole_Perel"] = SwapUxUyFaceSources,
 
     };
 
@@ -102,6 +153,26 @@ public static class CombatBackgroundCatalog
 
 
 
+    public static string GetSetDisplayLabel(string setId) => setId switch
+
+    {
+
+        "U_Skybox_01" => "U 宇宙",
+
+        "O_Skybox_01" => "O 宇宙",
+
+        "R_Skybox_01" => "R 宇宙",
+
+        "S_Skybox_01" => "S 宇宙",
+
+        "N_Skybox_Arothe01" => "N 阿洛斯",
+
+        _ => setId,
+
+    };
+
+
+
     public static Cubemap? LoadCubemap(string setId, bool mainPoolOnly = true)
 
     {
@@ -116,7 +187,9 @@ public static class CombatBackgroundCatalog
 
 
 
-        if (CubemapCache.TryGetValue(setId, out var cached))
+        var cacheKey = setId + ":L" + CubemapLayoutVersion;
+
+        if (CubemapCache.TryGetValue(cacheKey, out var cached))
 
         {
 
@@ -166,11 +239,27 @@ public static class CombatBackgroundCatalog
 
         var cubemap = new Cubemap(faceSize, TextureFormat.RGBA32, false);
 
-        for (var i = 0; i < FaceOrder.Length; i++)
+        var sourceRemap = SetFaceSourceRemap.TryGetValue(setId, out var remap) ? remap : IdentityFaceSources;
+
+        for (var slot = 0; slot < FaceOrder.Length; slot++)
 
         {
 
-            var faceTex = LoadFaceTexture(facePaths[i]);
+            var sourceIndex = sourceRemap[slot];
+
+            if (sourceIndex < 0 || sourceIndex >= facePaths.Length)
+
+            {
+
+                UnityEngine.Object.Destroy(cubemap);
+
+                return null;
+
+            }
+
+
+
+            var faceTex = LoadFaceTexture(facePaths[sourceIndex]);
 
             if (faceTex == null)
 
@@ -184,7 +273,7 @@ public static class CombatBackgroundCatalog
 
 
 
-            cubemap.SetPixels(faceTex.GetPixels(), FaceOrder[i]);
+            cubemap.SetPixels(faceTex.GetPixels(), FaceOrder[slot]);
 
             UnityEngine.Object.Destroy(faceTex);
 
@@ -196,7 +285,7 @@ public static class CombatBackgroundCatalog
 
         cubemap.filterMode = FilterMode.Bilinear;
 
-        CubemapCache[setId] = cubemap;
+        CubemapCache[cacheKey] = cubemap;
 
         return cubemap;
 
@@ -358,41 +447,15 @@ public static class CombatBackgroundCatalog
 
     {
 
+        var pngFiles = Directory.GetFiles(setDir, "*.png");
+
         var paths = new string[FaceSuffixes.Length];
 
         for (var i = 0; i < FaceSuffixes.Length; i++)
 
         {
 
-            var suffix = FaceSuffixes[i];
-
-            string? match = null;
-
-            foreach (var file in Directory.GetFiles(setDir, "*" + suffix + ".png"))
-
-            {
-
-                var name = Path.GetFileName(file);
-
-                if (name.Equals(EquirectFile, StringComparison.OrdinalIgnoreCase)
-
-                    || name.Equals(LegacyPanoramaFile, StringComparison.OrdinalIgnoreCase))
-
-                {
-
-                    continue;
-
-                }
-
-
-
-                match = file;
-
-                break;
-
-            }
-
-
+            var match = FindFacePath(pngFiles, FaceSuffixes[i], FaceKeywordFallbacks[i]);
 
             if (match == null)
 
@@ -411,6 +474,96 @@ public static class CombatBackgroundCatalog
 
 
         return paths;
+
+    }
+
+
+
+    private static string? FindFacePath(string[] pngFiles, string axisSuffix, string[] keywordFallbacks)
+
+    {
+
+        foreach (var file in pngFiles)
+
+        {
+
+            var name = Path.GetFileName(file);
+
+            if (name.Equals(EquirectFile, StringComparison.OrdinalIgnoreCase)
+
+                || name.Equals(LegacyPanoramaFile, StringComparison.OrdinalIgnoreCase))
+
+            {
+
+                continue;
+
+            }
+
+
+
+            if (name.EndsWith(axisSuffix + ".png", StringComparison.OrdinalIgnoreCase))
+
+            {
+
+                return file;
+
+            }
+
+        }
+
+
+
+        var upperKeywords = new string[keywordFallbacks.Length];
+
+        for (var i = 0; i < keywordFallbacks.Length; i++)
+
+        {
+
+            upperKeywords[i] = keywordFallbacks[i].ToUpperInvariant();
+
+        }
+
+
+
+        foreach (var file in pngFiles)
+
+        {
+
+            var name = Path.GetFileName(file);
+
+            if (name.Equals(EquirectFile, StringComparison.OrdinalIgnoreCase)
+
+                || name.Equals(LegacyPanoramaFile, StringComparison.OrdinalIgnoreCase))
+
+            {
+
+                continue;
+
+            }
+
+
+
+            var upper = name.ToUpperInvariant();
+
+            foreach (var keyword in upperKeywords)
+
+            {
+
+                if (upper.Contains(keyword))
+
+                {
+
+                    return file;
+
+                }
+
+            }
+
+        }
+
+
+
+        return null;
 
     }
 

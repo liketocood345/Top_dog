@@ -53,12 +53,10 @@ public static class BoardSummonWingService
         _ = ships;
         _ = modules;
         // li3etocoode345
-        var casterUnit = ResolveAnchorUnit(bf, caster.memberId, caster.legionId)
-            ?? ResolveAnchorUnit(bf, null, caster.legionId)
-            ?? ResolveAnchorUnit(bf, null, null);
+        var casterUnit = FindCasterUnit(bf, caster.memberId);
         if (casterUnit == null)
         {
-            return "战场上找不到友方锚点舰，无法召来董事会增援";
+            return "战场上找不到施法舰，无法召来董事会增援";
         // liketocoode345
         }
         if (!BattlefieldUnitLimits.CanSpawnNonCrewUnit(bf))
@@ -149,13 +147,10 @@ public static class BoardSummonWingService
             ClearPending(state);
             return;
         }
-        var legionId = state.pendingBoardSummonLegionId ?? caster.legionId;
-        var casterUnit = ResolveAnchorUnit(bf, caster.memberId, legionId)
-            ?? ResolveAnchorUnit(bf, null, legionId)
-            ?? ResolveAnchorUnit(bf, null, null);
+        var casterUnit = FindCasterUnit(bf, caster.memberId);
         if (casterUnit == null)
         {
-            CombatTelemetryLog.Log("board-wing-pending", "no anchor unit for " + caster.memberId);
+            CombatTelemetryLog.Log("board-wing-pending", "no caster unit for " + caster.memberId);
             return;
         }
         if (HasBoardWingsForMember(bf, caster.memberId!))
@@ -175,64 +170,7 @@ public static class BoardSummonWingService
         BattlefieldState bf,
         string? memberId,
         string? legionId) =>
-        FindCasterUnit(bf, memberId)
-        ?? FindFirstTopLevelFriendly(bf, legionId)
-        ?? FindFirstTopLevelFriendly(bf, null);
-
-    private static bool HasBoardWingsForMember(BattlefieldState bf, string memberId)
-    {
-        foreach (var u in bf.units)
-        {
-            if (u.IsDestroyed()
-                || !WingTonnageClass.Equals(u.tonnageClass, StringComparison.Ordinal))
-            {
-                continue;
-            }
-            if (memberId.Equals(u.memberId, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static BattlefieldUnit? FindFirstTopLevelFriendly(BattlefieldState bf, string? legionId)
-    {
-        BattlefieldUnit? best = null;
-        var bestWeight = -1f;
-        foreach (var u in bf.units)
-        {
-            if (u.IsDestroyed() || u.isBuilding || u.parentUnitId != null || u.side != UnitSide.FRIENDLY)
-            {
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(legionId)
-                && !legionId.Equals(u.legionId, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var w = TonnagePickWeight(u.tonnageClass);
-            if (w > bestWeight)
-            {
-                bestWeight = w;
-                best = u;
-            }
-        }
-
-        return best;
-    }
-
-    private static float TonnagePickWeight(string? tonnage) => tonnage switch
-    {
-        "TITAN" => 100f,
-        "DREADNOUGHT" => 90f,
-        "BATTLESHIP" => 80f,
-        "BATTLECRUISER" => 70f,
-        "CARRIER" or "SUPERCARRIER" => 75f,
-        _ => 10f,
-    };
+        FindCasterUnit(bf, memberId);
 
     public static BattlefieldUnit? FindCasterUnit(BattlefieldState bf, string? memberId)
     {
@@ -252,6 +190,23 @@ public static class BoardSummonWingService
             }
         }
         return null;
+    }
+
+    private static bool HasBoardWingsForMember(BattlefieldState bf, string memberId)
+    {
+        foreach (var u in bf.units)
+        {
+            if (u.IsDestroyed()
+                || !WingTonnageClass.Equals(u.tonnageClass, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            if (memberId.Equals(u.memberId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void ClearPending(GameState state)

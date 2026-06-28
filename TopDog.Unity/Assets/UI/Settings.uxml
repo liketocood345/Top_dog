@@ -13,6 +13,11 @@
               <ui:Label name="lbl-combat-fov-value" text="72°" class="settings-value" />
               <ui:Slider name="slider-combat-fov" low-value="36" high-value="110" value="72" show-input-field="false" class="settings-slider" />
             </ui:VisualElement>
+            <!-- ⚠️ 不要触动 — 实时交战宇宙背景设置（纯视觉，不参与游戏逻辑）；除非用户明确要求修改背景功能 -->
+            <ui:VisualElement class="settings-row">
+              <ui:Label text="实时交战背景" class="settings-label" />
+              <ui:DropdownField name="dropdown-combat-bg-set" class="settings-dropdown" />
+            </ui:VisualElement>
             <ui:VisualElement class="settings-row">
               <ui:Label text="实时交战背景分辨率" class="settings-label" />
               <ui:Label name="lbl-combat-bg-res-value" text="2048 px" class="settings-value" />

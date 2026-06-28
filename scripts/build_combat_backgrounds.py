@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Import Second Galaxy cubemap faces into TopDog combat backgrounds."""
+"""Import Second Galaxy cubemap faces into TopDog combat backgrounds.
+
+⚠️ 不要触动 — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）。
+除非用户明确要求修改本背景功能，否则不要改动本脚本及 CombatBackground* / CombatSpaceBackground* 链路。
+"""
 
 from __future__ import annotations
 
@@ -16,7 +20,8 @@ SG_ROOT = next(
 )
 DEST = Path(r"e:/game_dev/top_dog_unity/TopDog.Unity/Assets/Art/CombatBackgrounds")
 
-# SG export order: +X, +Y, +Z, -X, -Y, -Z (Unity Cubemap faces 0..5)
+# SG export order: +X, +Y, +Z, -X, -Y, -Z → Unity CubemapFace PositiveX..NegativeZ
+# Runtime remaps (CombatBackgroundCatalog): U/O/R/S swap +Y/-Y sources; SpaceBoxPRO swap +X/-X.
 FACE_SUFFIXES = ("+X", "+Y", "+Z", "-X", "-Y", "-Z")
 EQUIRECT_WIDTH = 2048
 EQUIRECT_HEIGHT = 1024
@@ -33,19 +38,19 @@ RESERVE_SETS: dict[str, list[str]] = {
     "Wormhole_Perel": [f"SpaceBoxPRO_Perel{s}.png" for s in FACE_SUFFIXES],
     "ProjectXSkyBox": [
         "ProjectXSkyBox_Right.png",
+        "ProjectXSkyBox_UP.png",
         "ProjectXSkyBox_Front.png",
         "ProjectXSkyBox_Left.png",
-        "ProjectXSkyBox_Back.png",
-        "ProjectXSkyBox_UP.png",
         "ProjectXSkyBox_Down.png",
+        "ProjectXSkyBox_Back.png",
     ],
     "Nebula_NuminousGlow": [
         "Nebula_NuminousGlow_2_Left+X.png",
+        "Nebula_NuminousGlow_4_Up+Y.png",
         "Nebula_NuminousGlow_0_Front+Z.png",
         "Nebula_NuminousGlow_3_Right-X.png",
-        "Nebula_NuminousGlow_1_Back-Z.png",
-        "Nebula_NuminousGlow_4_Up+Y.png",
         "Nebula_NuminousGlow_5_Down-Y.png",
+        "Nebula_NuminousGlow_1_Back-Z.png",
     ],
 }
 

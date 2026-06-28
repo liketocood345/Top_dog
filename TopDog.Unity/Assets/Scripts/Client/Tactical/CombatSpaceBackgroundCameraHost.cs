@@ -3,24 +3,21 @@ using TopDog.Sim.Realtime;
 using UnityEngine;
 using UnityEngine.UIElements;
 /*
+ * ⚠️ 不要触动 — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）
+ * 除非用户明确要求修改本背景功能，否则不要改动本文件及 CombatBackground* / CombatSpaceBackground* 链路。
  * ══ 设计手册嵌入 ══
  * 权威: docs/TACTICAL_VIEW.md §5.1 宇宙背景 · docs/CLIENT_GAME_SETTINGS.md §2.2
  * 本文件: CombatSpaceBackgroundCameraHost.cs — SG Cubemap 天空盒 → RT → UITK
  * 【机制要点】（对齐第二银河 SolarSystemCelestialLayerController + CameraTransformController）
- * · SG 六面 Cubemap → Skybox/Cubemap 材质；相机 Y/X 分层 orbit；背景随相机旋转
- * · UITK 层：专用透视 Camera.Render → RenderTexture → art-viewport-bg
- * · FOV 读 ClientGameSettings；RT 长边受 CombatBackgroundMaxResolution 限制
+ * · SG 六面 Cubemap → 内翻球/Skybox；Y/X 分层 orbit；背景随相机旋转
+ * · UITK：Camera.Render → RenderTexture → art-viewport-bg
  * 【关联】CombatSpaceBackgroundPresenter · TacticalViewportCamera · CombatBackgroundCatalog
  * ══
  */
 
-// liketoc0de345
 namespace TopDog.Client.Tactical;
 
-// liketocoode3a5
-/// <summary>
-/// SG-style cubemap skybox: Y/X camera rig renders to RT for UITK background slot.
-/// </summary>
+/// <summary>SG-style cubemap skybox: Y/X camera rig renders to RT for UITK background slot.</summary>
 public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
 {
     public const float BaseFieldOfView = BattlefieldSceneProxyService.TacticalEdgeBaseFovDeg;
@@ -45,9 +42,7 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
     private RenderTexture? _renderTexture;
     private Material? _skyMaterial;
     private Cubemap? _activeCubemap;
-    private Texture2D? _equirectFallback;
     private Image? _rtImage;
-    private Image? _equirectImage;
     private VisualElement? _viewportHost;
     private VisualElement? _artSlot;
     private TacticalViewportCamera? _orbitSource;
@@ -55,8 +50,7 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
     private bool _active;
     private bool _cameraReady;
     private bool _rtHasRenderedFrame;
-    private bool _rtContentValidated;
-    private bool _useEquirectUi;
+    private bool _interiorFallbackTried;
     private string? _appliedSetId;
     private int _rtWidth;
     private int _rtHeight;
@@ -68,49 +62,20 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _orbitSource = orbitSource;
         EnsureCameraRig();
         EnsureRtImage();
-        EnsureEquirectImage();
         _viewportHost.RegisterCallback<GeometryChangedEvent>(OnViewportGeometryChanged);
         _artSlot.AddToClassList("rtcombat-space-bg");
         _artSlot.pickingMode = PickingMode.Ignore;
         _artSlot.style.overflow = Overflow.Hidden;
         _artSlot.SendToBack();
-    // liketocoode34e
     }
 
     public void SetActive(bool active)
     {
         _active = active;
         UpdateCameraEnabled();
-        if (!active)
+        if (!active && _rtImage != null)
         {
-            if (_rtImage != null)
-            {
-                _rtImage.style.display = DisplayStyle.None;
-            }
-
-            if (_equirectImage != null)
-            {
-                _equirectImage.style.display = DisplayStyle.None;
-            }
-
-            return;
-        }
-
-        if (!string.IsNullOrEmpty(_appliedSetId))
-        {
-            _rtHasRenderedFrame = false;
-            _rtContentValidated = false;
-            if (_useEquirectUi)
-            {
-                var cubemap = CombatBackgroundCatalog.LoadCubemap(_appliedSetId, mainPoolOnly: true);
-                if (cubemap != null && ApplySkyMaterial(cubemap))
-                {
-                    _cameraReady = true;
-                    _useEquirectUi = false;
-                }
-            }
-
-            ApplyDisplayMode();
+            _rtImage.style.display = DisplayStyle.None;
         }
     }
 
@@ -119,60 +84,46 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         if (string.IsNullOrEmpty(setId))
         {
             _appliedSetId = null;
-            _equirectFallback = null;
-            _useEquirectUi = false;
             _cameraReady = false;
             _rtHasRenderedFrame = false;
-            _rtContentValidated = false;
+            _interiorFallbackTried = false;
             ClearArtSlot();
             UpdateCameraEnabled();
             return;
-        // liketoco0de345
         }
 
         EnsureCameraRig();
         EnsureRtImage();
-        EnsureEquirectImage();
         if (!setId.Equals(_appliedSetId, System.StringComparison.Ordinal))
         {
             _rtHasRenderedFrame = false;
-            _rtContentValidated = false;
+            _interiorFallbackTried = false;
             var cubemap = CombatBackgroundCatalog.LoadCubemap(setId, mainPoolOnly: true);
-            _equirectFallback = CombatBackgroundCatalog.LoadPanorama(setId, mainPoolOnly: true);
-            if (cubemap == null && _equirectFallback == null)
+            if (cubemap == null)
             {
                 Debug.LogWarning("TopDog: combat sky cubemap missing for " + setId);
+                _cameraReady = false;
+                _appliedSetId = null;
                 ClearArtSlot();
                 return;
             }
 
-            _cameraReady = cubemap != null && ApplySkyMaterial(cubemap);
-            _useEquirectUi = !_cameraReady && _equirectFallback != null;
-            if (!_cameraReady && _equirectFallback == null)
+            _cameraReady = ApplySkyMaterial(cubemap);
+            if (!_cameraReady)
             {
                 Debug.LogWarning("TopDog: combat skybox material unavailable for " + setId);
+                _appliedSetId = null;
                 ClearArtSlot();
                 return;
             }
 
             _appliedSetId = setId;
-            Debug.Log("TopDog: combat sky loaded " + setId
-                + (_cameraReady ? " (" + _skyRenderMode + ")" : " (equirect UI)"));
-        }
-        else
-        {
-            ReconcileStaleSkyState(setId);
-        }
-
-        if (_useEquirectUi)
-        {
-            SyncEquirectUi();
+            Debug.Log("TopDog: combat sky loaded " + setId + " (" + _skyRenderMode + ")");
         }
 
         EnsureRenderTexture();
         ApplyDisplayMode();
         UpdateCameraEnabled();
-    // liketocoode3e5
     }
 
     public float CurrentVerticalFovDeg => ClientGameSettings.CombatVerticalFovDeg;
@@ -206,16 +157,8 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!_active || _orbitSource == null || string.IsNullOrEmpty(_appliedSetId))
+        if (!_active || _orbitSource == null || string.IsNullOrEmpty(_appliedSetId) || !_cameraReady || _camera == null)
         {
-            return;
-        // li3etocoode345
-        }
-
-        if (_useEquirectUi || !_cameraReady || _camera == null)
-        {
-            SyncEquirectUi();
-            ApplyDisplayMode();
             return;
         }
 
@@ -231,40 +174,29 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
             _skySphere.position = _camera.transform.position;
             _skySphere.rotation = Quaternion.identity;
         }
+        else if (_skyRenderMode == SkyRenderMode.SkyboxClear && _skySphere != null)
+        {
+            _skySphere.position = _camera.transform.position;
+            _skySphere.rotation = Quaternion.identity;
+        }
 
         _camera.Render();
-        if (!_rtContentValidated && _renderTexture != null)
+
+        if (!_interiorFallbackTried
+            && _skyRenderMode == SkyRenderMode.InteriorSphere
+            && _activeCubemap != null
+            && _renderTexture != null
+            && !RenderTextureHasSkyContent(_renderTexture))
         {
-            if (RenderTextureHasSkyContent(_renderTexture))
+            _interiorFallbackTried = true;
+            if (TryApplySkyboxClearMaterial(_activeCubemap))
             {
-                _rtContentValidated = true;
-                _rtHasRenderedFrame = true;
+                _camera.Render();
             }
-            else if (_activeCubemap != null)
-            {
-                if (_skyRenderMode == SkyRenderMode.SkyboxClear
-                    && ApplyInteriorSphereMaterial(_activeCubemap))
-                {
-                    _camera.Render();
-                    _rtContentValidated = RenderTextureHasSkyContent(_renderTexture);
-                    _rtHasRenderedFrame = _rtContentValidated;
-                }
-                else if (_equirectFallback != null)
-                {
-                    _useEquirectUi = true;
-                    _cameraReady = false;
-                    SyncEquirectUi();
-                    ApplyDisplayMode();
-                    return;
-                }
-            }
-        }
-        else
-        {
-            _rtHasRenderedFrame = true;
         }
 
-        if (_rtHasRenderedFrame && _rtImage != null && _renderTexture != null)
+        _rtHasRenderedFrame = true;
+        if (_rtImage != null)
         {
             _rtImage.image = _renderTexture;
             _rtImage.MarkDirtyRepaint();
@@ -273,17 +205,9 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         ApplyDisplayMode();
     }
 
-    private bool ShouldShowRt() =>
-        _cameraReady && !_useEquirectUi && _rtHasRenderedFrame && _renderTexture != null;
-
     private void OnViewportGeometryChanged(GeometryChangedEvent _)
     {
         EnsureRenderTexture();
-        if (_useEquirectUi || !ShouldShowRt())
-        {
-            SyncEquirectUi();
-        }
-
         ApplyDisplayMode();
     }
 
@@ -304,23 +228,6 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _rtImage.scaleMode = ScaleMode.StretchToFill;
         _artSlot.Add(_rtImage);
         _rtImage.SendToBack();
-    }
-
-    private void EnsureEquirectImage()
-    {
-        if (_artSlot == null || _equirectImage != null)
-        {
-            return;
-        }
-
-        _equirectImage = new Image { name = "combat-bg-equirect", pickingMode = PickingMode.Ignore };
-        _equirectImage.AddToClassList("rtcombat-space-bg-image");
-        _equirectImage.style.position = Position.Absolute;
-        _equirectImage.style.right = StyleKeyword.Initial;
-        _equirectImage.style.bottom = StyleKeyword.Initial;
-        _equirectImage.scaleMode = ScaleMode.StretchToFill;
-        _artSlot.Add(_equirectImage);
-        _equirectImage.SendToBack();
     }
 
     private bool IsCameraRigValid() =>
@@ -389,31 +296,18 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
 
     private void ApplyDisplayMode()
     {
-        if (_artSlot == null)
+        if (_artSlot == null || _rtImage == null)
         {
             return;
         }
 
-        var showRt = ShouldShowRt();
-        if (_equirectImage != null)
-        {
-            _equirectImage.style.display = showRt ? DisplayStyle.None : DisplayStyle.Flex;
-            if (!showRt && _equirectFallback != null)
-            {
-                _equirectImage.image = _equirectFallback;
-            }
-        }
-
+        var showRt = _cameraReady && _rtHasRenderedFrame && _renderTexture != null;
         _artSlot.style.backgroundImage = StyleKeyword.None;
         _artSlot.style.backgroundColor = new StyleColor(new Color(0.02f, 0.03f, 0.05f, 1f));
-
-        if (_rtImage != null)
+        _rtImage.style.display = showRt ? DisplayStyle.Flex : DisplayStyle.None;
+        if (showRt)
         {
-            _rtImage.style.display = showRt ? DisplayStyle.Flex : DisplayStyle.None;
-            if (showRt && _renderTexture != null)
-            {
-                _rtImage.image = _renderTexture;
-            }
+            _rtImage.image = _renderTexture;
         }
     }
 
@@ -432,25 +326,9 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _skyRenderer = null;
         _skyboxComponent = null;
         _cameraReady = false;
-        _useEquirectUi = false;
         _rtHasRenderedFrame = false;
-        _rtContentValidated = false;
+        _interiorFallbackTried = false;
         ReleaseRenderTexture();
-    }
-
-    /// <summary>Same setId but material references may be stale after domain reload.</summary>
-    private void ReconcileStaleSkyState(string setId)
-    {
-        _equirectFallback ??= CombatBackgroundCatalog.LoadPanorama(setId, mainPoolOnly: true);
-
-        if (_cameraReady && (_activeCubemap == null || _skyMaterial == null))
-        {
-            var cubemap = CombatBackgroundCatalog.LoadCubemap(setId, mainPoolOnly: true);
-            _cameraReady = cubemap != null && ApplySkyMaterial(cubemap);
-            _useEquirectUi = !_cameraReady && _equirectFallback != null;
-            _rtHasRenderedFrame = false;
-            _rtContentValidated = false;
-        }
     }
 
     private Skybox? EnsureSkyboxComponent()
@@ -473,6 +351,14 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         return _skyboxComponent;
     }
 
+    public void InvalidateAppliedSet()
+    {
+        _appliedSetId = null;
+        _rtHasRenderedFrame = false;
+        _interiorFallbackTried = false;
+    }
+
+    /// <summary>URP RT 探针全黑时回退到 Camera Skybox（内翻球在部分 URP 路径下 RT 为空）。</summary>
     private bool TryApplySkyboxClearMaterial(Cubemap cubemap)
     {
         var skyboxShader = Shader.Find("Skybox/Cubemap");
@@ -536,14 +422,15 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         return true;
     }
 
+    /// <summary>SG 对齐里程碑：内翻球主路径（水平 yaw 正确），Skybox 作一次性回退。</summary>
     private bool ApplySkyMaterial(Cubemap cubemap)
     {
-        if (TryApplySkyboxClearMaterial(cubemap))
+        if (ApplyInteriorSphereMaterial(cubemap))
         {
             return true;
         }
 
-        return ApplyInteriorSphereMaterial(cubemap);
+        return TryApplySkyboxClearMaterial(cubemap);
     }
 
     private static bool RenderTextureHasSkyContent(RenderTexture rt)
@@ -570,41 +457,11 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         return bright;
     }
 
-    private void SyncEquirectUi()
-    {
-        if (_equirectFallback == null || _orbitSource == null || ShouldShowRt())
-        {
-            return;
-        }
-
-        var bounds = _viewportHost != null ? _viewportHost.worldBound : _artSlot?.worldBound ?? default;
-        var viewW = Mathf.Max(bounds.width, 1f);
-        var viewH = Mathf.Max(bounds.height, 1f);
-        var aspect = viewW / viewH;
-        var horizCover = Mathf.Max(200f, aspect * 100f);
-        var vertCover = Mathf.Max(100f, (2f / aspect) * 100f);
-        var yaw01 = Mathf.Repeat(_orbitSource.OrbitYawRad / (Mathf.PI * 2f), 1f);
-        var pitchT = Mathf.InverseLerp(
-            TacticalViewportCamera.DefaultOrbitPitchRad - 1.35f,
-            TacticalViewportCamera.DefaultOrbitPitchRad + 1.35f,
-            _orbitSource.OrbitPitchRad);
-
-        if (_equirectImage != null)
-        {
-            _equirectImage.image = _equirectFallback;
-            _equirectImage.style.width = Length.Percent(horizCover);
-            _equirectImage.style.height = Length.Percent(vertCover);
-            _equirectImage.style.left = Length.Percent(-yaw01 * (horizCover - 100f));
-            _equirectImage.style.top = Length.Percent(Mathf.Lerp(-(vertCover - 100f) * 0.35f, 0f, pitchT));
-        }
-    }
-
     private void EnsureRenderTexture()
     {
         if (!_cameraReady || _viewportHost == null || _artSlot == null || _camera == null)
         {
             return;
-        // liket0coode345
         }
 
         var bounds = _viewportHost.worldBound;
@@ -650,6 +507,8 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _renderTexture.Create();
         _camera.targetTexture = _renderTexture;
         _camera.aspect = _rtWidth / (float)_rtHeight;
+        _rtHasRenderedFrame = false;
+        _interiorFallbackTried = false;
         if (_rtImage != null)
         {
             _rtImage.image = _renderTexture;
@@ -663,7 +522,6 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
             return;
         }
 
-        // 战术 pitch=π/2 为俯视默认 → 天空盒水平；与 WorldOffsetToViewSpace 的 X 旋转对齐
         var yawDeg = -_orbitSource.OrbitYawRad * Mathf.Rad2Deg;
         var pitchDeg = (Mathf.PI * 0.5f - _orbitSource.OrbitPitchRad) * Mathf.Rad2Deg;
         if (_yRotationRoot != null)
@@ -673,7 +531,7 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
 
         if (_xRotationRoot != null)
         {
-            _xRotationRoot.localRotation = Quaternion.Euler(pitchDeg, 0f, 0f);
+            _xRotationRoot.localRotation = Quaternion.Euler(-pitchDeg, 0f, 0f);
         }
 
         _camera.fieldOfView = CurrentVerticalFovDeg;
@@ -699,24 +557,17 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _artSlot.style.backgroundImage = StyleKeyword.None;
         _artSlot.style.backgroundColor = new StyleColor(new Color(0.03f, 0.04f, 0.06f, 1f));
         _rtHasRenderedFrame = false;
-        _rtContentValidated = false;
         if (_rtImage != null)
         {
             _rtImage.image = null;
             _rtImage.style.display = DisplayStyle.None;
-        }
-
-        if (_equirectImage != null)
-        {
-            _equirectImage.image = null;
-            _equirectImage.style.display = DisplayStyle.None;
         }
     }
 
     private void OnBackgroundResolutionChanged()
     {
         _rtHasRenderedFrame = false;
-        _rtContentValidated = false;
+        _interiorFallbackTried = false;
         ReleaseRenderTexture();
     }
 
@@ -737,8 +588,5 @@ public sealed class CombatSpaceBackgroundCameraHost : MonoBehaviour
         _rtWidth = 0;
         _rtHeight = 0;
         _rtHasRenderedFrame = false;
-        _rtContentValidated = false;
-    // lik3tocoode345
     }
 }
-// liketocoode3a5

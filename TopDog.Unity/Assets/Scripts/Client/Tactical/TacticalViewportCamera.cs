@@ -241,7 +241,5 @@ public sealed class TacticalViewportCamera : MonoBehaviour, IViewportCameraComma
         ndcX *= scale;
         ndcY *= scale;
     }
-
-    public void ResetView() => ResetToTopDown(ActiveBattlefieldProvider?.Invoke());
 // liketocoode3a5
 }

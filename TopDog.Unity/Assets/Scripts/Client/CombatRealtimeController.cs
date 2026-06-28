@@ -15,6 +15,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 /*
+ * ⚠️ 背景链（CombatSpaceBackground* 接线 / OnCombatBackgroundSetChanged 等）：勿动，除非用户明确要求。
  * ══ 设计手册嵌入 ══
  * 权威: docs/TACTICAL_VIEW.md · docs/TACTICAL_WARP_AND_ORDERS.md · docs/MATCH_FLOW.md · docs/BATTLE_REPORT.md
  * 本文件: CombatRealtimeController.cs — 实时战术 UI 主控（视口/星图切换/战报/舰队底栏）
@@ -199,6 +200,7 @@ public sealed class CombatRealtimeController : UiScreenController
         RefreshAll();
         ClientGameSettings.CombatViewFovChanged += OnCombatViewSettingsChanged;
         ClientGameSettings.CombatBackgroundResolutionChanged += OnCombatViewSettingsChanged;
+        ClientGameSettings.CombatBackgroundSetChanged += OnCombatBackgroundSetChanged;
     }
 
     public void RefreshViewportNow() => RefreshAll();
@@ -209,6 +211,18 @@ public sealed class CombatRealtimeController : UiScreenController
         {
             RefreshAll();
         }
+    }
+
+    private void OnCombatBackgroundSetChanged()
+    {
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
+        CombatSpaceBackgroundState.ApplyClientPreference();
+        _spaceBackground?.InvalidateAppliedSet();
+        RefreshAll();
     }
 
     private void OnCombatStarMapSystemPicked(string systemId)
@@ -357,6 +371,7 @@ public sealed class CombatRealtimeController : UiScreenController
         CombatSpaceBackgroundState.Reset();
         ClientGameSettings.CombatViewFovChanged -= OnCombatViewSettingsChanged;
         ClientGameSettings.CombatBackgroundResolutionChanged -= OnCombatViewSettingsChanged;
+        ClientGameSettings.CombatBackgroundSetChanged -= OnCombatBackgroundSetChanged;
         base.OnDisable();
     }
 

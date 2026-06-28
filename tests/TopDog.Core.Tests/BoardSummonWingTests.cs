@@ -79,58 +79,6 @@ public sealed class BoardSummonWingTests
     }
 
     [Test]
-    public void LiveCombat_Summon_UsesFriendlyAnchorWhenCasterOffField()
-    {
-        var state = new GameState
-        {
-            storyRound = 2,
-            phase = GamePhase.COMBAT,
-            combatRealtimeActive = true,
-        };
-        state.legions.Add(new LegionState { legionId = "VIP", isLocal = true });
-        state.identities["10001001"] = new IdentityState
-        {
-            identityCode = "10001001",
-            traitIds = { TraitActiveSkillService.BoardSummonTraitId },
-        };
-        var caster = new MemberState
-        {
-            memberId = "off-field-vip",
-            identityCode = "10001001",
-            legionId = "VIP",
-            traitIds = { TraitActiveSkillService.BoardSummonTraitId },
-        };
-        state.members.Add(caster);
-        IdentityMigrationService.EnsureFromMembers(state);
-
-        var bf = new BattlefieldState
-        {
-            battlefieldId = "bf-live",
-            systemId = "sys1",
-            timeSec = 10f,
-        };
-        bf.units.Add(new BattlefieldUnit
-        {
-            unitId = "u-anchor",
-            memberId = "other-member",
-            legionId = "VIP",
-            side = UnitSide.FRIENDLY,
-            tonnageClass = "CARRIER",
-            arrivalAtSec = 0f,
-            structureHp = 1000f,
-            structureMax = 1000f,
-        });
-        state.battlefields.Add(bf);
-        state.activeBattlefieldId = bf.battlefieldId;
-
-        var echo = TraitActiveSkillService.TryUse(
-            state, caster, TraitActiveSkillService.BoardSummonTraitId);
-        Assert.That(echo, Does.Contain("翼"));
-        Assert.That(bf.units.Count(u =>
-            BoardSummonWingService.WingTonnageClass.Equals(u.tonnageClass, StringComparison.Ordinal)), Is.EqualTo(5));
-    }
-
-    [Test]
     public void CapFull_RejectsSpawn()
     {
         var bf = new BattlefieldState();

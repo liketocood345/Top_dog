@@ -1,3 +1,5 @@
+// ⚠️ 不要触动 — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）
+// 除非用户明确要求修改本背景功能，否则不要改动本 Shader 及 CombatBackground* / CombatSpaceBackground* 链路。
 Shader "TopDog/CombatSkyboxInterior"
 {
     Properties

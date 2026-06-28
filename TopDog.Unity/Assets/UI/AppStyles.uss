@@ -218,3 +218,7 @@ RadioButton {
 .settings-slider {
     min-height: 20px;
 }
+
+.settings-dropdown {
+    min-height: 24px;
+}

@@ -114,16 +114,6 @@ public static class TraitActiveSkillService
                 return "当前无进行中的实时战场";
             }
 
-            var summonLegionId = caster.legionId ?? state.pendingBoardSummonLegionId;
-            var anchor = BoardSummonWingService.ResolveAnchorUnit(bf, caster.memberId, summonLegionId)
-                ?? BoardSummonWingService.ResolveAnchorUnit(bf, state.possessingMemberId, summonLegionId)
-                ?? BoardSummonWingService.ResolveAnchorUnit(bf, null, summonLegionId)
-                ?? BoardSummonWingService.ResolveAnchorUnit(bf, null, null);
-            if (anchor == null)
-            {
-                return "战场上找不到友方锚点舰，无法召来董事会增援";
-            }
-
             return BoardSummonWingService.TrySpawnFromCaster(
                 state,
                 bf,

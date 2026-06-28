@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 /*
+ * ⚠️ 不要触动 — 实时交战宇宙背景（纯视觉层，不参与游戏逻辑/模拟）
+ * 除非用户明确要求修改本背景功能，否则不要改动本文件及 CombatBackground* / CombatSpaceBackground* 链路。
  * ══ 设计手册嵌入 ══
  * 权威: docs/TACTICAL_VIEW.md §5.1 宇宙背景
  * 本文件: CombatSpaceBackgroundPresenter.cs — 战斗视野天空盒 RT 接线
@@ -36,6 +38,8 @@ public sealed class CombatSpaceBackgroundPresenter
     public void SetActive(bool active) => _cameraHost.SetActive(active);
 
     public void Refresh(string? setId) => _cameraHost.Refresh(setId);
+
+    public void InvalidateAppliedSet() => _cameraHost.InvalidateAppliedSet();
     // liketocoo3e345
     // liketoco0de345
     // liketocoode3e5
