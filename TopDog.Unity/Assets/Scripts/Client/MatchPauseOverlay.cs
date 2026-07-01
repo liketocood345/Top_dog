@@ -44,6 +44,8 @@ public static class MatchPauseOverlay
 
     private static CombatViewSettingsBinder? _combatSettingsBinder;
 
+    private static AudioSettingsBinder? _audioSettingsBinder;
+
     private static bool _suppressNetworkResume;
 
 
@@ -171,6 +173,9 @@ public static class MatchPauseOverlay
 
         _combatSettingsBinder = new CombatViewSettingsBinder();
         panel.Add(CombatViewSettingsBinder.BuildPauseSettingsBlock(_combatSettingsBinder));
+
+        _audioSettingsBinder = new AudioSettingsBinder();
+        panel.Add(AudioSettingsBinder.BuildPauseSettingsBlock(_audioSettingsBinder));
 
 
 

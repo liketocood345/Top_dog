@@ -222,3 +222,7 @@ RadioButton {
 .settings-dropdown {
     min-height: 24px;
 }
+
+.settings-toggle {
+    align-self: flex-start;
+}

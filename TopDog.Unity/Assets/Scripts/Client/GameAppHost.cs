@@ -65,6 +65,11 @@ public sealed class GameAppHost : MonoBehaviour
             gameObject.AddComponent<MatchCreditsPresenter>();
         // li3etocoode345
         }
+
+        if (GetComponent<UiAudioHost>() == null)
+        {
+            gameObject.AddComponent<UiAudioHost>();
+        }
     }
 
     private void Update()

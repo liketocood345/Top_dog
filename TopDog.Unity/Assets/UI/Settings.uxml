@@ -23,6 +23,19 @@
               <ui:Label name="lbl-combat-bg-res-value" text="2048 px" class="settings-value" />
               <ui:Slider name="slider-combat-bg-res" low-value="512" high-value="4096" value="2048" show-input-field="false" class="settings-slider" />
             </ui:VisualElement>
+            <ui:VisualElement class="settings-row">
+              <ui:Label text="背景音乐" class="settings-label" />
+              <ui:Toggle name="toggle-bgm" value="false" class="settings-toggle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="settings-row">
+              <ui:Label text="鼠标点击音效" class="settings-label" />
+              <ui:Toggle name="toggle-ui-click" value="true" class="settings-toggle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="settings-row">
+              <ui:Label text="音量" class="settings-label" />
+              <ui:Label name="lbl-master-volume-value" text="10%" class="settings-value" />
+              <ui:Slider name="slider-master-volume" low-value="0" high-value="100" value="10" show-input-field="false" class="settings-slider" />
+            </ui:VisualElement>
           </ui:VisualElement>
           <ui:Button name="btn-back" text="返回主菜单" class="menu-button" />
         </ui:VisualElement>

@@ -119,6 +119,12 @@ public static class UiInputSetup
 
         }
 
+        UiAudioHost.Ensure();
+        if (UiAudioHost.Instance != null)
+        {
+            UiAudioHost.Instance.RegisterDocument(document);
+        }
+
     }
 
 

@@ -42,6 +42,76 @@ public static class ClientGameSettings
     public static event Action CombatViewFovChanged;
     public static event Action CombatBackgroundResolutionChanged;
     public static event Action CombatBackgroundSetChanged;
+    public static event Action AudioSettingsChanged;
+
+    private const string KeyBackgroundMusicEnabled = "topdog.audio_bgm_enabled";
+    private const string KeyUiClickSoundEnabled = "topdog.audio_ui_click_enabled";
+    private const string KeyMasterVolume = "topdog.audio_master_volume";
+
+    public const float DefaultMasterVolume = 0.1f;
+    public const float MinMasterVolume = 0f;
+    public const float MaxMasterVolume = 1f;
+
+    public static bool BackgroundMusicEnabled
+    {
+        get => PlayerPrefs.GetInt(KeyBackgroundMusicEnabled, 0) != 0;
+    }
+
+    public static bool UiClickSoundEnabled
+    {
+        get => PlayerPrefs.GetInt(KeyUiClickSoundEnabled, 1) != 0;
+    }
+
+    public static float MasterVolume
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat(KeyMasterVolume, DefaultMasterVolume), MinMasterVolume, MaxMasterVolume);
+    }
+
+    public static void SetBackgroundMusicEnabled(bool enabled, bool persist = true)
+    {
+        var previous = BackgroundMusicEnabled;
+        if (persist)
+        {
+            PlayerPrefs.SetInt(KeyBackgroundMusicEnabled, enabled ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        if (previous != enabled)
+        {
+            AudioSettingsChanged?.Invoke();
+        }
+    }
+
+    public static void SetUiClickSoundEnabled(bool enabled, bool persist = true)
+    {
+        var previous = UiClickSoundEnabled;
+        if (persist)
+        {
+            PlayerPrefs.SetInt(KeyUiClickSoundEnabled, enabled ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        if (previous != enabled)
+        {
+            AudioSettingsChanged?.Invoke();
+        }
+    }
+
+    public static void SetMasterVolume(float volume, bool persist = true)
+    {
+        var clamped = Mathf.Clamp(volume, MinMasterVolume, MaxMasterVolume);
+        var previous = MasterVolume;
+        if (persist)
+        {
+            PlayerPrefs.SetFloat(KeyMasterVolume, clamped);
+            PlayerPrefs.Save();
+        }
+
+        if (!Mathf.Approximately(previous, clamped))
+        {
+            AudioSettingsChanged?.Invoke();
+        }
+    }
 
     public static float CombatVerticalFovDeg
     {
