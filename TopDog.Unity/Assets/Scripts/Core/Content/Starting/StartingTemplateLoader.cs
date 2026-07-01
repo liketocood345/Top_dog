@@ -247,20 +247,52 @@ public static class StartingTemplateLoader
     private static string? ResolveTemplateCsvPath(string templateId, string suffix)
     {
         var dir = AppRoot.StartingTemplatesDir();
-        var candidates = new[]
+        if (!Directory.Exists(dir))
         {
-            Path.Combine(dir, templateId + suffix),
-            Path.Combine(dir, "starting_templates", templateId + suffix),
-        };
-        foreach (var path in candidates)
+            return null;
+        }
+
+        var fileName = templateId + suffix;
+        string? best = null;
+        foreach (var path in Directory.EnumerateFiles(dir, fileName, SearchOption.AllDirectories))
         {
-            if (File.Exists(path))
+            if (best == null)
             {
-                return path;
+                best = path;
+                continue;
+            }
+
+            if (PreferTemplateCsvPath(path, best))
+            {
+                best = path;
             }
         }
 
-        return null;
+        return best;
+    }
+
+    /// <summary>嵌套 starting_templates/ 下的副本优先于根目录同名文件（与 meta 目录一致）。</summary>
+    private static bool PreferTemplateCsvPath(string candidate, string current)
+    {
+        static int NestedScore(string p) =>
+            p.Contains($"{Path.DirectorySeparatorChar}starting_templates{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            ? 1
+            : 0;
+
+        var nestedDiff = NestedScore(candidate) - NestedScore(current);
+        if (nestedDiff != 0)
+        {
+            return nestedDiff > 0;
+        }
+
+        try
+        {
+            return new FileInfo(candidate).Length > new FileInfo(current).Length;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static MemberState? ParseRow(string[] row, Dictionary<string, int> idx)

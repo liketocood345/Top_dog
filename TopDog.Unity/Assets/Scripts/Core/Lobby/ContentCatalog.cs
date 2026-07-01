@@ -185,18 +185,27 @@ public static class ContentCatalog
         {
             return outList;
         }
+        var byId = new Dictionary<string, TemplateCatalogEntry>(StringComparer.Ordinal);
         foreach (var meta in Directory.EnumerateFiles(dir, "*meta.csv", SearchOption.AllDirectories))
         {
             var e = ParseTemplateMeta(meta);
-            if (e?.templateId != null && e.templateId.Length > 0)
+            if (e?.templateId == null || e.templateId.Length == 0)
             {
-                if (lobbyOnly && !e.lobbyVisible)
-                {
-                    continue;
-                }
-                outList.Add(e);
+                continue;
+            }
+
+            if (lobbyOnly && !e.lobbyVisible)
+            {
+                continue;
+            }
+
+            if (!byId.ContainsKey(e.templateId))
+            {
+                byId[e.templateId] = e;
             }
         }
+
+        outList.AddRange(byId.Values);
         outList.Sort((a, b) => string.Compare(a.displayName ?? a.templateId, b.displayName ?? b.templateId, StringComparison.Ordinal));
         return outList;
     }
